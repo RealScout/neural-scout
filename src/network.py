@@ -15,10 +15,11 @@ import random
 
 # Third-party libraries
 import numpy as np
+import gtd
 
 class Network(object):
 
-    def __init__(self, sizes):
+    def __init__(self, sizes, translation):
         """The list ``sizes`` contains the number of neurons in the
         respective layers of the network.  For example, if the list
         was [2, 3, 1] then it would be a three-layer network, with the
@@ -29,6 +30,7 @@ class Network(object):
         layer is assumed to be an input layer, and by convention we
         won't set any biases for those neurons, since biases are only
         ever used in computing the outputs from later layers."""
+        self.translation = translation
         self.num_layers = len(sizes)
         self.sizes = sizes
         self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
@@ -40,6 +42,32 @@ class Network(object):
         for b, w in zip(self.biases, self.weights):
             a = sigmoid(np.dot(w, a)+b)
         return a
+
+    def translate(self, a):
+        results = self.feedforward(a)
+        idx = np.argmax(results)
+        print self.translation[idx]
+
+    def avg_class(self, dataset):
+        data_len = len(dataset)
+        classifications = {}
+        for datum in dataset:
+            for key, value in datum.iteritems():
+                if not(key in classifications):
+                    classifications[key] = np.array([[0.0],[0.0],[0.0]])
+                result = np.array(self.feedforward(gtd.convert_str(value)))
+                classifications[key] += np.array(result)/data_len
+        for key, _ in classifications.iteritems():
+            guess_idx = np.argmax(classifications[key])
+            guess = self.translation[guess_idx]
+            copy = classifications[key]
+            guess_value = copy[guess_idx]
+            confidence = round((guess_value * 2 - sum(copy)) * 100, 2)
+            print "{}:".format(key)
+            print "    {}:{}%".format(self.translation[0], round(classifications[key][0] * 100, 2))
+            print "    {}:{}%".format(self.translation[1], round(classifications[key][1] * 100, 2))
+            print "    {}:{}%".format(self.translation[2], round(classifications[key][2] * 100, 2))
+            print "    Guess: {}, Confidence: {}".format(guess, confidence)
 
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             test_data=None):
